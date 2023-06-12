@@ -30,9 +30,8 @@ class CustomDataset(Dataset):
 
 
 def make_dataloader(data_path, batch_size=10, num_workers=0):
-    datasets = []
+    dataloaders = []
     for subject in range(1, 31):
-        
         train_data_file = os.path.join(data_path, f"subject_{subject}_train.csv")
         train_labels_file = os.path.join(data_path, f"subject_{subject}_train_labels.csv")
         test_data_file = os.path.join(data_path, f"subject_{subject}_test.csv")
@@ -45,23 +44,26 @@ def make_dataloader(data_path, batch_size=10, num_workers=0):
         train_dataset = CustomDataset(train_data_file, train_labels_file)
         test_dataset = CustomDataset(test_data_file, test_labels_file)
 
-        datasets.append(train_dataset)
-        datasets.append(test_dataset)
+        train_dataloader = DataLoader(
+            dataset=train_dataset,
+            batch_size=batch_size,
+            shuffle=True,
+            num_workers=num_workers
+        )
+        test_dataloader = DataLoader(
+            dataset=test_dataset,
+            batch_size=batch_size,
+            shuffle=True,
+            num_workers=num_workers
+        )
 
-    # Combine all datasets into a single dataset
-    combined_dataset = torch.utils.data.ConcatDataset(datasets)
+        dataloaders.append((subject, train_dataloader))
+        dataloaders.append((subject, test_dataloader))
 
-    dataloader = DataLoader(
-        dataset=combined_dataset,
-        batch_size=batch_size,
-        shuffle=True,
-        num_workers=num_workers
-    )
-
-    return dataloader
+    return dataloaders
 
 
-def train(net, dataloader, num_epochs=10):
+def train(net, dataloaders, num_epochs=10):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     net = net.to(device)
     criterion = torch.nn.CrossEntropyLoss()
@@ -71,7 +73,10 @@ def train(net, dataloader, num_epochs=10):
         running_loss = 0.0
         correct = 0
         total = 0
-
+    #读取每个subject的dataloader
+    for subject, dataloader in dataloaders:
+        print(f"Subject: {subject}")
+    # 遍历每个批次的数据
         for data, labels in dataloader:
             data = data.to(device)
             labels = labels.to(device)
@@ -97,5 +102,5 @@ def train(net, dataloader, num_epochs=10):
 # 使用示例
 net = Net()
 data_path = 'E:/OPERATION/data'  # 替换为您的数据路径
-dataloader = make_dataloader(data_path)
-train(net, dataloader)
+dataloaders = make_dataloader(data_path)
+train(net, dataloaders)
