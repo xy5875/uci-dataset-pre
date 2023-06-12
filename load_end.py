@@ -29,41 +29,37 @@ class CustomDataset(Dataset):
         return self.data[idx], self.labels[idx]
 
 
-def make_dataloader(data_path, batch_size=10, num_workers=0):
-    dataloaders = []
-    for subject in range(1, 31):
-        train_data_file = os.path.join(data_path, f"subject_{subject}_train.csv")
-        train_labels_file = os.path.join(data_path, f"subject_{subject}_train_labels.csv")
-        test_data_file = os.path.join(data_path, f"subject_{subject}_test.csv")
-        test_labels_file = os.path.join(data_path, f"subject_{subject}_test_labels.csv")
+def make_dataloader(data_path, subject, batch_size=10, num_workers=0):
+    train_data_file = os.path.join(data_path, f"subject_{subject}_train.csv")
+    train_labels_file = os.path.join(data_path, f"subject_{subject}_train_labels.csv")
+    test_data_file = os.path.join(data_path, f"subject_{subject}_test.csv")
+    test_labels_file = os.path.join(data_path, f"subject_{subject}_test_labels.csv")
 
-        if not os.path.exists(train_data_file) or not os.path.exists(train_labels_file) or \
-           not os.path.exists(test_data_file) or not os.path.exists(test_labels_file):
-            continue
+    if not os.path.exists(train_data_file) or not os.path.exists(train_labels_file) or \
+       not os.path.exists(test_data_file) or not os.path.exists(test_labels_file):
+        return None
 
-        train_dataset = CustomDataset(train_data_file, train_labels_file)
-        test_dataset = CustomDataset(test_data_file, test_labels_file)
+    train_dataset = CustomDataset(train_data_file, train_labels_file)
+    test_dataset = CustomDataset(test_data_file, test_labels_file)
 
-        train_dataloader = DataLoader(
-            dataset=train_dataset,
-            batch_size=batch_size,
-            shuffle=True,
-            num_workers=num_workers
-        )
-        test_dataloader = DataLoader(
-            dataset=test_dataset,
-            batch_size=batch_size,
-            shuffle=True,
-            num_workers=num_workers
-        )
+    train_dataloader = DataLoader(
+        dataset=train_dataset,
+        batch_size=batch_size,
+        shuffle=True,
+        num_workers=num_workers
+    )
+    test_dataloader = DataLoader(
+        dataset=test_dataset,
+        batch_size=batch_size,
+        shuffle=False,
+        num_workers=num_workers
+    )
 
-        dataloaders.append((subject, train_dataloader))
-        dataloaders.append((subject, test_dataloader))
-
-    return dataloaders
+    return train_dataloader, test_dataloader
 
 
-def train(net, dataloaders, num_epochs=10):
+
+def train(net, dataloader, num_epochs=10):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     net = net.to(device)
     criterion = torch.nn.CrossEntropyLoss()
@@ -74,9 +70,6 @@ def train(net, dataloaders, num_epochs=10):
         correct = 0
         total = 0
     #读取每个subject的dataloader
-    for subject, dataloader in dataloaders:
-        print(f"Subject: {subject}")
-    # 遍历每个批次的数据
         for data, labels in dataloader:
             data = data.to(device)
             labels = labels.to(device)
@@ -102,5 +95,5 @@ def train(net, dataloaders, num_epochs=10):
 # 使用示例
 net = Net()
 data_path = 'E:/OPERATION/data'  # 替换为您的数据路径
-dataloaders = make_dataloader(data_path)
-train(net, dataloaders)
+train_dataloader, test_dataloader = make_dataloader(data_path, subject=1)
+train(net, train_dataloader)
